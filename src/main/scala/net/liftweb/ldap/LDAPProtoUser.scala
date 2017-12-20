@@ -17,32 +17,27 @@
 package net.liftweb {
 package ldap {
 
-import javax.naming.directory.{Attributes}
-import scala.util.matching.{Regex}
-import scala.xml.{Elem, NodeSeq}
-import net.liftweb.http.{LiftResponse, RedirectResponse, S, SessionVar}
-import net.liftweb.http.js.{JsCmds}
-import net.liftweb.mapper.{BaseOwnedMappedField,
-                           MappedString,
+import javax.naming.directory.Attributes
+import net.liftweb.http.{S, SessionVar}
+import net.liftweb.http.js.JsCmds
+import net.liftweb.mapper.{MappedString,
                            MetaMegaProtoUser,
                            MegaProtoUser}
-import net.liftweb.sitemap.{Menu}
-import net.liftweb.util.{Helpers}
-import net.liftweb.common.{Box, Empty, Full}
+import net.liftweb.sitemap.Menu
+import net.liftweb.util.Helpers
+import net.liftweb.common.{Box, Empty}
 
 import Helpers._
 
-import scala.util.matching.{Regex}
+import scala.util.matching.Regex
 import scala.xml.{Elem, NodeSeq}
 
 trait MetaLDAPProtoUser[ModelType <: LDAPProtoUser[ModelType]] extends MetaMegaProtoUser[ModelType] {
     self: ModelType =>
 
-    override def signupFields: List[FieldPointerType] = uid ::
-        cn :: dn :: Nil
+    override def signupFields: List[FieldPointerType] = uid :: cn :: dn :: Nil
 
-    override def fieldOrder: List[FieldPointerType] = uid ::
-        cn :: dn :: Nil
+    override def fieldOrder: List[FieldPointerType] = uid :: cn :: dn :: Nil
 
     /**
      * The menu item for creating the user/sign up (make this "Empty" to disable)
@@ -88,7 +83,7 @@ trait MetaLDAPProtoUser[ModelType <: LDAPProtoUser[ModelType]] extends MetaMegaP
         <form method="post" action={S.uri}>
             <table>
                 <tr>
-                    <td colspan="2">{S.??("log.in")}</td>
+                    <td colspan="2">{S.?("log.in")}</td>
                 </tr>
                 <tr>
                     <td>Username</td><td><user:name /></td>
@@ -113,9 +108,9 @@ trait MetaLDAPProtoUser[ModelType <: LDAPProtoUser[ModelType]] extends MetaMegaP
         }
 
         Helpers.bind("user", loginXhtml,
-                    "name" -> (JsCmds.FocusOnLoad(<input type="text" name="username"/>)),
-                    "password" -> (JsCmds.FocusOnLoad(<input type="password" name="password"/>)),
-                    "submit" -> (<input type="submit" value={S.??("log.in")}/>))
+                     "name"     -> JsCmds.FocusOnLoad(<input type="text" name="username"/>),
+                     "password" -> JsCmds.FocusOnLoad(<input type="password" name="password"/>),
+                     "submit"   -> <input type="submit" value={S.?("log.in")}/>)
     }
 
     def ldapLogin(username: String, password: String): Boolean = {
@@ -123,10 +118,10 @@ trait MetaLDAPProtoUser[ModelType <: LDAPProtoUser[ModelType]] extends MetaMegaP
 
         val users = ldapVendor.search(ldapUserSearch.format(username))
 
-        if (users.size >= 1) {
-            val userDn = users(0)
+        if (users.nonEmpty) {
+            val userDn = users.head
             if (ldapVendor.bindUser(userDn, password)) {
-                val completeDn = userDn + "," + ldapVendor.parameters().get("ldap.base").getOrElse("")
+                val completeDn = userDn + "," + ldapVendor.parameters().getOrElse("ldap.base", "")
                 logUserIn(this)
 
                 bindAttributes(_getUserAttributes(completeDn))
@@ -141,9 +136,9 @@ trait MetaLDAPProtoUser[ModelType <: LDAPProtoUser[ModelType]] extends MetaMegaP
         return true
     }
 
-    def bindAttributes(attrs: Attributes) = {
+    def bindAttributes(attrs: Attributes) {
         for {
-            theCn <- Box !! attrs.get(commonNameAttributeName).get
+            theCn  <- Box !! attrs.get(commonNameAttributeName).get
             theUid <- Box !! attrs.get(uidAttributeName).get
         }
         {
@@ -181,9 +176,7 @@ trait LDAPProtoUser[T <: LDAPProtoUser[T]] extends MegaProtoUser[T] {
         override def dbIndexed_? = true
     }
 
-    def getRoles: List[String] = {
-        return ldapRoles.get
-    }
+    def getRoles: List[String] = ldapRoles.get
 
     def setRoles(userDn: String, ldapVendor: LDAPVendor) {
         def getGroupNameFromDn(dn: String): String = {

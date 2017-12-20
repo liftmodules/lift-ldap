@@ -14,102 +14,67 @@
  * limitations under the License.
  */
 
-package net.liftweb {
-package ldap {
-
-import common.Full
-
-import _root_.org.specs._
-import _root_.org.specs.runner.JUnit3
-import _root_.org.specs.runner.ConsoleRunner
+package net.liftweb.ldap
 
 import javax.naming.CommunicationException
 
 import org.apache.mina.util.AvailablePortFinder
-import org.apache.directory.server.core.DefaultDirectoryService
-import org.apache.directory.server.core.partition.impl.btree.jdbm.{JdbmIndex,JdbmPartition}
-import org.apache.directory.server.ldap.LdapServer
-import org.apache.directory.server.protocol.shared.transport.TcpTransport
-import org.apache.directory.server.xdbm.Index
-import org.apache.directory.server.core.entry.ServerEntry
-import org.apache.directory.shared.ldap.name.LdapDN
+import org.specs2.{Specification, control, mutable, specification}
 
-class LdapSpecsAsTest extends JUnit3(LdapSpecs)
-object LdapSpecsRunner extends ConsoleRunner(LdapSpecs)
+object LdapParamsTest extends Specification {
+  private val LDAP = SimpleLDAPVendor
 
-object LdapSpecs extends Specification {
-  val ROOT_DN = "dc=ldap,dc=liftweb,dc=net"
+  def is = sequential ^
+    s2"""
+        This is specification to check parameters processing of LDAPVendor
+          handle from map  $map
+          handle from file $file
+      """
 
-  // Thanks to Francois Armand for pointing this utility out!
-  val service_port = AvailablePortFinder.getNextAvailable(40000)
-  val service = new DefaultDirectoryService
-  val ldap = new LdapServer
+  def map = {
+    val testHost = "ldap://localhost:8080"
+    LDAP.parameters = () => Map(LDAP.KEY_URL -> testHost)
+    LDAP.parameters().get(LDAP.KEY_URL) must beSome(testHost)
+  }
 
+  def file = {
+    LDAP.parameters = () => LDAP.parametersFromFile("src/test/resources/ldap.properties")
+    LDAP.parameters().get(LDAP.KEY_URL) must beSome("ldap://localhost:8000")
+  }
+}
 
-  /*
-   * The following is taken from:
-   * http://directory.apache.org/apacheds/1.5/41-embedding-apacheds-into-an-application.html
-   * http://stackoverflow.com/questions/1560230/running-apache-ds-embedded-in-my-application
-   */
-  doBeforeSpec {
-    try {
-      // Disable changelog
-      service.getChangeLog.setEnabled(false)
+object LdapVendorTest extends mutable.Specification with specification.BeforeAfterAll with control.Debug {
+  sequential
 
-      // Set up a partition
-      val partition = new JdbmPartition
-      partition.setId("lift-ldap")
-      partition.setSuffix(ROOT_DN)
-      service.addPartition(partition)
+  private var embeddedADS = null: EmbeddedADS
 
-      // Index attributes (gnarly type due to poor type inferencing)
-      val indices : java.util.Set[Index[_,ServerEntry]] = new java.util.HashSet()
+  private val ROOT_DN = "dc=liftweb,dc=net"
 
-      List("objectClass", "ou", "uid", "sn").foreach {
-        attr : String => indices.add(new JdbmIndex(attr))
-      }
+  object myLdap extends LDAPVendor
 
-      partition.setIndexedAttributes(indices)
+  override def beforeAll() {
+    val servicePort = AvailablePortFinder.getNextAvailable(8000)
 
-      // Set up the transport to use our "available" port
-      ldap.setTransports(new TcpTransport(service_port))
-      ldap.setDirectoryService(service)
+    myLdap.configure(Map(
+      "ldap.url"  -> s"ldap://localhost:$servicePort/",
+      "ldap.base" -> ROOT_DN
+    ))
 
-      service.startup()
+    embeddedADS = new EmbeddedADS(ROOT_DN)
+    embeddedADS.initServer(servicePort)
+  }
 
-      // Inject the root entry if it does not already exist
-      if ( !service.getAdminSession().exists(partition.getSuffixDn)) {
-        println("Adding root entry")
-        val rootEntry = service.newEntry(new LdapDN(ROOT_DN))
-        rootEntry.add( "objectClass", "top", "domain", "extensibleObject" );
-        rootEntry.add( "dc", "ldap" );
-        service.getAdminSession().add( rootEntry );
-      }
-
-      addTestData()
-
-      ldap.start()
-
-      println("Started LDAP server on port " + service_port)
-    } catch {
-      case e => e.printStackTrace
-    }
+  override def afterAll() {
+    embeddedADS.stopServer()
   }
 
   "LDAPVendor" should {
-    shareVariables()
-
-    object myLdap extends LDAPVendor
-
-    myLdap.configure(Map("ldap.url" -> "ldap://localhost:%d/".format(service_port),
-                         "ldap.base" -> "dc=ldap,dc=liftweb,dc=net"))
-
     "handle simple lookups" in {
-      myLdap.search("objectClass=person") must_== List("cn=Test User")
+      myLdap.search("objectClass=person") must contain("cn=TestUser")
     }
 
     "handle simple authentication" in {
-      myLdap.bindUser("cn=Test User", "letmein")
+      myLdap.bindUser("cn=TestUser", "letmein")
     }
 
     "attempt reconnects" in {
@@ -125,28 +90,4 @@ object LdapSpecs extends Specification {
       }
     }
   }
-
-
-  doAfterSpec {
-    ldap.stop()
-    service.shutdown()
-    println("Stopped server")
-  }
-
-  def addTestData() {
-    val username = new LdapDN("cn=Test User," + ROOT_DN)
-    if (! service.getAdminSession().exists(username)) {
-      println("Adding test user")
-      // Add a test user. This will be used for searching and binding
-      val entry = service.newEntry(username)
-      entry.add("objectClass", "person", "organizationalPerson")
-      entry.add("cn", "Test User")
-      entry.add("sn", "User")
-      entry.add("userpassword", "letmein")
-      service.getAdminSession.add(entry)
-    }
-  }
 }
-
-
-}} // Close nested packages

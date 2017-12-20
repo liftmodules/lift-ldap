@@ -20,15 +20,15 @@ package ldap {
 import java.io.{InputStream, FileInputStream}
 import java.util.{Hashtable, Properties}
 
-import javax.naming.{AuthenticationException,CommunicationException,Context,NamingException}
-import javax.naming.directory.{Attributes, BasicAttributes, SearchControls}
-import javax.naming.ldap.{InitialLdapContext,LdapName}
+import javax.naming.{AuthenticationException, CommunicationException, Context}
+import javax.naming.directory.{Attributes, SearchControls}
+import javax.naming.ldap.InitialLdapContext
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConversions._
 
-import _root_.net.liftweb.util.{ControlHelpers,Props,SimpleInjector,ThreadGlobal}
-import _root_.net.liftweb.common.{Box,Empty,Full,Loggable}
+import _root_.net.liftweb.util.{ControlHelpers, Props, SimpleInjector, ThreadGlobal}
+import _root_.net.liftweb.common.{Box, Empty, Full, Loggable}
 
 /**
  * A simple extension to LDAPVendor to provide configuration
@@ -233,31 +233,31 @@ class LDAPVendor extends Loggable with SimpleInjector {
    * This sets the Directory SearchControls instance
    * that is used to refine searches on the provider.
    */
-  val searchControls = new Inject[SearchControls](defaultSearchControls){}
+  val searchControls = new Inject[SearchControls](defaultSearchControls()){}
   
   /**
    * The default SearchControls to use: search the
    * base DN with a sub-tree scope, and return the
    * "cn" attribute.
    */
-  def defaultSearchControls() : SearchControls = {
+  def defaultSearchControls(): SearchControls = {
     val constraints = new SearchControls()
     constraints.setSearchScope(SearchControls.SUBTREE_SCOPE)
     constraints.setReturningAttributes(Array("cn"))
-    return constraints
+    constraints
   }
 
   /**
    * The configuration to use for connecting to the
    * provider. It should be set via the configure methods
    */
-  private var internal_config : Map[String,String] = Map.empty
+  private var internal_config: Map[String,String] = Map.empty
 
   /**
    * The configuration to use for connecting to the
    * provider. It should be set via the configure methods
    */
-  def configuration = internal_config
+  def configuration: Map[String,String] = internal_config
 
   /**
    * This method checks the configuration and sets defaults for any
@@ -271,7 +271,7 @@ class LDAPVendor extends Loggable with SimpleInjector {
   def processConfig(input : Map[String,String]) : Map[String,String] = {
     var currentConfig = input
 
-    def setIfEmpty(name : String, newVal : String) = 
+    def setIfEmpty(name: String, newVal: String): Unit =
       if (currentConfig.get(name).isEmpty) {
         currentConfig += (name -> newVal)
       }
@@ -322,7 +322,7 @@ class LDAPVendor extends Loggable with SimpleInjector {
    * Obtains a (possibly cached) InitialContext
    * instance based on the currently set parameters.
    */
-  def initialContext = getInitialContext()
+  def initialContext: InitialLdapContext = getInitialContext
 
   def attributesFromDn(dn: String): Attributes =
     initialContext.getAttributes(dn)
@@ -339,11 +339,11 @@ class LDAPVendor extends Loggable with SimpleInjector {
                                               filter,
                                               searchControls.vend)
 
-    while(searchResults.hasMore()) {
+    while (searchResults.hasMore) {
       resultList += searchResults.next().getName
     }
   
-    return resultList.reverse.toList
+    resultList.reverse.toList
   }
 
   /**
@@ -355,22 +355,21 @@ class LDAPVendor extends Loggable with SimpleInjector {
 
     try {
       val username = dn + "," + ldapBaseDn.vend
-      var ctx = 
+      val ctx =
         ldapUser.doWith(username) {
           ldapPassword.doWith(password) {
             openInitialContext()
           }
         }
 
-      ctx.close
+      ctx.close()
 
       logger.info("Successfully authenticated " + dn)
       true
     } catch {
-      case ae : AuthenticationException => {
+      case ae : AuthenticationException =>
         logger.warn("Authentication failed for '%s' : %s".format(dn, ae.getMessage))
         false
-      }
     }
   }
 
@@ -383,7 +382,7 @@ class LDAPVendor extends Loggable with SimpleInjector {
    * test DN is configured, the connection (cached or new) will be validated
    * by performing a lookup on the test DN.
    */
-  protected def getInitialContext() : InitialLdapContext = {
+  protected def getInitialContext: InitialLdapContext = {
     val maxAttempts = retryMaxCount.vend
     var attempts = 0
 
@@ -394,19 +393,17 @@ class LDAPVendor extends Loggable with SimpleInjector {
         context = (currentInitialContext.box, testLookup.vend) match {
           // If we don't want to test an existing context, just return it
           case (Full(ctxt), Empty) => Full(ctxt)
-          case (Full(ctxt), Full(test)) => {
+          case (Full(ctxt), Full(test)) =>
             logger.debug("Testing InitialContext prior to returning")
             ctxt.lookup(test)
             Full(ctxt)
-          }
-          case (Empty,_) => {
+          case (Empty,_) =>
             // We'll just allocate a new InitialContext to the thread
             currentInitialContext(openInitialContext())
 
             // Setting context to Empty here forces one more iteration in case a test
             // DN has been configured
             Empty
-          }
         }
       } catch {
         case commE : CommunicationException => {
@@ -435,10 +432,10 @@ class LDAPVendor extends Loggable with SimpleInjector {
    * This method does the actual work of setting up the environment and constructing
    * the InitialLdapContext.
    */
-  protected def openInitialContext () : InitialLdapContext = {
+  protected def openInitialContext(): InitialLdapContext = {
     logger.debug("Obtaining an initial context from '%s'".format(ldapUrl.vend))
             
-    var env = new Hashtable[String, String]()
+    val env = new java.util.Hashtable[String, String]()
     env.put(Context.PROVIDER_URL, ldapUrl.vend)
     env.put(Context.SECURITY_AUTHENTICATION, ldapAuthType.vend)
     env.put(Context.SECURITY_PRINCIPAL, ldapUser.vend)
