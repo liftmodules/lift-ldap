@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package net.liftweb {
-package ldap {
+package net.liftweb.ldap
 
 import java.io.{InputStream, FileInputStream}
-import java.util.{Hashtable, Properties}
+import java.util.Properties
 
 import javax.naming.{AuthenticationException, CommunicationException, Context}
 import javax.naming.directory.{Attributes, SearchControls}
@@ -57,7 +56,7 @@ object SimpleLDAPVendor extends LDAPVendor {
   }
 
   @deprecated("Use the configure() method")
-  def setupFromBoot = configure()
+  def setupFromBoot(): Unit = configure()
 }
 
 /**
@@ -444,6 +443,3 @@ class LDAPVendor extends Loggable with SimpleInjector {
     new InitialLdapContext(env, null)
   }
 }
-
-}} // Close nested packages
-
