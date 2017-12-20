@@ -7,7 +7,7 @@ organization := "net.liftmodules"
 
 version := "1.6.0-SNAPSHOT"
 
-liftVersion := "3.0.2"
+liftVersion := "3.1.0"
 
 liftEdition := (liftVersion apply { _.substring(0,3) }).value
 
