@@ -7,13 +7,13 @@ organization := "net.liftmodules"
 
 version := "1.6.0-SNAPSHOT"
 
-liftVersion := "3.1.1"
+liftVersion := "3.2.0"
 
 liftEdition := (liftVersion apply { _.substring(0,3) }).value
 
 moduleName := name.value + "_" + liftEdition.value
 
-crossScalaVersions := Seq("2.12.4", "2.11.12")
+crossScalaVersions := Seq("2.12.5", "2.11.12")
 scalaVersion := crossScalaVersions.value.head
 
 scalacOptions ++= Seq("-unchecked", "-deprecation")
