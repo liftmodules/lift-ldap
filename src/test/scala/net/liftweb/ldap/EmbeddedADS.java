@@ -17,7 +17,6 @@ import org.apache.directory.api.util.FileUtils;
 import org.apache.directory.api.util.exception.Exceptions;
 import org.apache.directory.server.constants.ServerDNConstants;
 import org.apache.directory.server.core.DefaultDirectoryService;
-import org.apache.directory.server.core.api.CacheService;
 import org.apache.directory.server.core.api.DirectoryService;
 import org.apache.directory.server.core.api.DnFactory;
 import org.apache.directory.server.core.api.InstanceLayout;
@@ -148,11 +147,6 @@ public class EmbeddedADS
         // Initialize the LDAP service
         service = new DefaultDirectoryService();
         service.setInstanceLayout( new InstanceLayout( workDir ) );
-
-        CacheService cacheService = new CacheService();
-        cacheService.initialize( service.getInstanceLayout() );
-
-        service.setCacheService( cacheService );
 
         // first load the schema
         initSchemaPartition();

@@ -24,7 +24,6 @@ import javax.naming.directory.{Attributes, SearchControls}
 import javax.naming.ldap.InitialLdapContext
 
 import scala.collection.mutable.ListBuffer
-import scala.collection.JavaConversions._
 
 import _root_.net.liftweb.util.{ControlHelpers, Props, SimpleInjector, ThreadGlobal}
 import _root_.net.liftweb.common.{Box, Empty, Full, Loggable}
@@ -312,7 +311,9 @@ class LDAPVendor extends Loggable with SimpleInjector {
   }
 
   protected def propertiesToMap(props: Properties) : Map[String,String] = {
-    Map.empty ++ props
+    val builder = Map.newBuilder[String, String]
+    props.forEach((k,v) => builder.addOne((k.toString, v.toString)))
+    builder.result()
   }
 
   // =========== Code ====================
